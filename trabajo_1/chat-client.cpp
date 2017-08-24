@@ -12,16 +12,18 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+
 using namespace std;
 
+#define BUFFERSIZE 1024
+#define PORTNUMBER 5000
+
 int main(){
-    int servidor;
-    int portNumber = 1500;
-    int bufferSize = 1024;
-    char *buffer = new char(bufferSize);
+    int servidor; //socket
+    
+    char buffer[BUFFERSIZE];
     bool finished = false;
-    char* ip = (char*)"127.0.0.1";
-    string msm;
+    string ip = "127.0.0.1";
 
     struct  sockaddr_in direc; //in.h
 
@@ -33,30 +35,26 @@ int main(){
     cout<<"escriba # para acabar la conexion"<<endl;
 
     direc.sin_family = AF_INET;
-    direc.sin_port = htons(portNumber);
-    inet_pton(AF_INET, ip, &direc.sin_addr);
+    direc.sin_port = htons(PORTNUMBER);
+    inet_pton(AF_INET, ip.c_str(), &direc.sin_addr);
 
     if (connect(servidor,(struct sockaddr *)&direc, sizeof(direc)) == 0){
         cout<<"conexion con el servidor: "<<inet_ntoa(direc.sin_addr)<<endl;
     } else{
         cout<<"conexion fallo"<<endl;
     }
-
-
     
-    recv(servidor, buffer, bufferSize, 0);
-
-    cout<<"servidor: "<<buffer<<endl;
-    cout<<"poner * al final de cada linea"<<endl;
+    recv(servidor, buffer, BUFFERSIZE, 0);
+    cout<<"servidor: "<<buffer<<endl;    
 
     while (!finished){
         cout<<"cliente: "<<endl;
-        cin.getline(buffer,bufferSize);
-        send(servidor,buffer,bufferSize,0);
+        cin.getline(buffer,BUFFERSIZE);
+        send(servidor,&buffer,BUFFERSIZE,0);
         if (*buffer == '#')
             finished = true;
         else{
-            recv(servidor, buffer, bufferSize, 0);
+            recv(servidor, &buffer, BUFFERSIZE, 0);
             cout<<"servidor: "<<buffer<<endl;
             if (*buffer == '#')
                 finished = true;
@@ -64,6 +62,5 @@ int main(){
     }
     cout<<"conexion terminada, cliente terminado"<<endl;
     close(servidor);
-    delete[] buffer;
     return 0;
 }
