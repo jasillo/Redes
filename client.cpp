@@ -45,7 +45,10 @@ int main(){
     }
 	
 	cin.getline(buffer,BUFFERSIZE);
-	send(servidor,&buffer,BUFFERSIZE,0);    
+	send(servidor,&buffer,BUFFERSIZE,0);   
+
+	recv(servidor, &buffer, BUFFERSIZE, 0);
+    cout<<"servidor: "<<buffer<<endl;
     
     cout<<"conexion terminada, cliente terminado"<<endl;
     close(servidor);
