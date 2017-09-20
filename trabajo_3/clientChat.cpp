@@ -39,6 +39,17 @@ string getWord(string *s){
     return word;
 };
 
+string getString(string *s){
+    int pos;
+    //eliminar espacios en blanco al inicio
+    for (pos=0; pos < s->size() && s->at(pos) == ' '; ++pos){};
+    *s = s->substr(pos);
+    if (s->empty())
+        return "";    
+    
+    return *s;
+};
+
 std::string fixedLength(int value, int digits = 3) {
     unsigned int uvalue = value;
     if (value < 0) {
@@ -71,7 +82,7 @@ struct PACKET {
     void analizeInstruction(string command){
         opt = getWord(&command);
         user = getWord(&command);
-        message = getWord(&command);
+        message = getString(&command);
     };
 
     void clear(){
@@ -123,7 +134,11 @@ void receiver(){
         }
         else if (recvPacket.opt == "login"){
             cout<<"usuario nuevo se conecto como "<<recvPacket.user<<endl;   
-        }else{
+        }
+        else if (recvPacket.opt == "exit"){
+            cout<<"usuario "<<recvPacket.user<<" se desconecto"<<endl;   
+        }
+        else{
             cout<<recvPacket.opt<<endl;
         }
 
@@ -173,23 +188,24 @@ void login(string u) {
     inet_pton(AF_INET, ip.c_str(), &direc.sin_addr);
 
     if (connect(servidor,(struct sockaddr *)&direc, sizeof(direc)) == -1 ){
-        cout<<"conexion al servidor"<<endl;
+        cout<<"conexion al servidor fallo"<<endl;
         return;
     } 
     sockfd = servidor;
-    user = u;  
+    user = u;
+    isconnected = true;
+    thread (receiver).detach();
 
     struct PACKET loginPacket;
     loginPacket.opt = "login";
     loginPacket.user = user;
     loginPacket.message = "";
     string loginMsg = loginPacket.generate(); 
-    int s = send(sockfd, loginMsg.c_str(), loginMsg.size(),0);
-
-    thread (receiver).detach();
+    int s = send(sockfd, loginMsg.c_str(), loginMsg.size(),0);  
 }
 
 void logout() {
+    
     int sent;
     struct PACKET exitPacket;
     
@@ -197,13 +213,16 @@ void logout() {
         cout<<"ya estas desconectado"<<endl;
         return;
     }
+    isconnected = false;
+
     exitPacket.opt = "exit";
     exitPacket.user = user;
     exitPacket.message = "";
     string exitMessage = exitPacket.generate();
     
     sent = send(sockfd, exitMessage.c_str(), exitMessage.size(), 0);
-    isconnected = false;
+
+    shutdown(sockfd, SHUT_RDWR);
     close(sockfd);
 }
 
@@ -226,7 +245,7 @@ int main(int argc, char **argv) {
             string u = getWord(&line);
             login(u);
         }               
-        else if(option == "send") {                       
+        else if(option == "send") {                            
             sendtoall(line);
         }        
         else 

@@ -16,13 +16,12 @@
 #include <string>
 #include <iostream>
 #include <algorithm>
+#include <mutex> 
  
 #define IP "127.0.0.1"
 #define PORT 8080
  
 #define BUFFSIZE 1024
-#define ALIASLEN 32
-#define OPTLEN 16
 
 using namespace std;
 
@@ -41,6 +40,17 @@ string getWord(string *s){
     string word = s->substr(0,pos);
     *s = s->substr(pos);
     return word;
+};
+
+string getString(string *s){
+    int pos;
+    //eliminar espacios en blanco al inicio
+    for (pos=0; pos < s->size() && s->at(pos) == ' '; ++pos){};
+    *s = s->substr(pos);
+    if (s->empty())
+        return "";    
+    
+    return *s;
 };
 
 std::string fixedLength(int value, int digits = 3) {
@@ -74,7 +84,7 @@ struct PACKET {
     void analizeInstruction(string command){
         opt = getWord(&command);
         user = getWord(&command);
-        message = getWord(&command);
+        message = getString(&command);
     };
 
     void clear(){
@@ -94,6 +104,7 @@ vector<int> clientsFD;
  
 int sockfd;
 bool isconnected;
+mutex mtxScreen;
 
 void handler(){
     char buffer[BUFFSIZE]; 
@@ -101,19 +112,25 @@ void handler(){
     while(cin.getline(buffer, BUFFSIZE)) {
         //analizar linea de comando dentro de packet
         string line = buffer;
-        string option = getWord(&line);
-
+        string option = getWord(&line);        
         // ejecutar la opcion elegida
-        if (option == "exit"){
+        if (option == "quit"){            
             isconnected = false;
+            shutdown(sockfd, SHUT_RDWR);
             close(sockfd);;
             break;
         }       
-        else 
+        else{
+            mtxScreen.lock();
             cout<<"orden no reconocida"<<endl;
+            mtxScreen.unlock();
+        }
 
         bzero(buffer,BUFFSIZE);
     }
+    mtxScreen.lock();
+    cout<<"servidor terminado"<<endl;
+    mtxScreen.unlock();
 };
 
 void clientHandler(int fd){
@@ -130,7 +147,6 @@ void clientHandler(int fd){
             break;
         }
         tam = atoi(headBuffer);
-        msg = headBuffer;
 
         r = recv (fd, buffer, tam, 0);
         if (r < 0){
@@ -141,18 +157,45 @@ void clientHandler(int fd){
         }
         
         recvPacket.analizeInstruction(buffer);
+        msg = recvPacket.generate();
+       
         if (recvPacket.opt == "login"){
-            cout<<"usuario conectado como "<<recvPacket.user<<endl;    
+            mtxScreen.lock();
+            cout<<"usuario conectado como "<<recvPacket.user<<endl;
+            for (int i=0; i<clientsFD.size(); ++i){
+                if (clientsFD[i] != fd)
+                    send(clientsFD[i],msg.c_str(),msg.size(),0);
+            }
+            mtxScreen.unlock();  
+        }else if (recvPacket.opt == "exit"){
+            mtxScreen.lock();
+            cout<<"usuario "<<recvPacket.user<<" se desconecto"<<endl;
+            for (int i=0; i<clientsFD.size(); ++i){
+                if (clientsFD[i] != fd)
+                    send(clientsFD[i],msg.c_str(),msg.size(),0);
+                else{
+                    clientsFD.erase (clientsFD.begin()+i);
+                    --i;
+                }
+            }
+            mtxScreen.unlock();
+            break; 
         }
         else if (recvPacket.opt == "send"){
-              
+            mtxScreen.lock();            
+            for (int i=0; i<clientsFD.size(); ++i){
+                if (clientsFD[i] != fd)
+                    send(clientsFD[i],msg.c_str(),msg.size(),0);                
+            }
+            mtxScreen.unlock(); 
         }else{
-            cout<<recvPacket.opt<<endl;
+            cout<<"no reconocido"<<endl;
         }
 
         bzero(buffer,BUFFSIZE);
         bzero(headBuffer,4);
     }
+
 }
 
 int main(int argc, char **argv) {
@@ -185,15 +228,16 @@ int main(int argc, char **argv) {
     /* keep accepting connections */
     socklen_t sin_size = sizeof(serv_addr);;
     int newfd;
-    while(1) {
+    while(isconnected) {
         //accept(servidor, (struct sockaddr*)&direc, &direcSize
         if((newfd = accept(sockfd, (struct sockaddr *)&serv_addr, &sin_size)) == -1) {
-            cout<<"error al aceptar coneccion"<<endl;
-            return -1;
+            continue;
         }
         
         if(clientsFD.size() == 10 ) {
+            mtxScreen.lock();
             cout<<"conexiones llenas"<<endl;
+            mtxScreen.unlock();
             continue;
         }
 
