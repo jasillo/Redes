@@ -32,6 +32,19 @@ int sockfd;
 bool isconnected;
 mutex mtxScreen;
 
+void closeConection(int fd){
+    mtxScreen.lock();
+    for (int i=0; i<clientsFD.size(); ++i){
+        if (fd == clientsFD[i]){
+            shutdown(fd, SHUT_RDWR);
+            close(fd);
+            clientsFD.erase (clientsFD.begin()+i);
+            break;
+        }
+    }
+    mtxScreen.unlock();     
+}
+
 // interfaz del servidor que lee commandos de la pantalla (thread)
 void handler(){
     char buffer[BUFFSIZE]; 
@@ -55,9 +68,9 @@ void handler(){
 
         bzero(buffer,BUFFSIZE);
     }
-    mtxScreen.lock();
+    /*mtxScreen.lock();
     cout<<"servidor terminado"<<endl;
-    mtxScreen.unlock();
+    mtxScreen.unlock();*/
 };
 
 // manejador que recive los mensajes de los clientes y los renvia a los demas (thread)
@@ -70,8 +83,8 @@ void clientHandler(int fd){
     while (isconnected){
         r = recv (fd, headBuffer, 4, 0); // recive el tamaño de la cabezera
         if (r < 0){
-            cout<<"se perdio la coneccion"<<endl;            
-            close(fd);
+            //cout<<"se perdio la coneccion"<<endl;            
+            closeConection(fd);
             break;
         }
         
@@ -79,6 +92,17 @@ void clientHandler(int fd){
         //opciones del header
         if (recvPacket.opt == "m"){
             //leer lo que queda del paquete y reenviar
+            r = recv (sockfd, buffer, 5, 0);
+            if (r < 0){
+                closeConection(fd);
+                break;
+            }
+            recvPacket.analizeCordinates(buffer);
+            msg = recvPacket.generate();
+
+            for (int i=0 ; i<clientsFD.size(); ++i)
+                send(clientsFD[i], msg.c_str(), msg.size(), 0);
+
         }
         else if (recvPacket.opt == "x"){
 
@@ -145,7 +169,7 @@ int main(int argc, char **argv) {
         mtxScreen.lock();
         clientsFD.push_back(newfd);
         mtxScreen.unlock();
-        
+
         thread (clientHandler,newfd).detach();        
     }
  

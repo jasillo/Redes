@@ -29,6 +29,14 @@ using namespace std;
 int sockfd;
 bool isconnected;
 string user;
+Ground ground;
+
+// se perdio la connecion
+void lostConection(){
+    isconnected = false;
+    close(sockfd);
+};
+
 
 // se encarga de recivir los mensajes
 void receiver(){
@@ -43,21 +51,31 @@ void receiver(){
         //recivimos tamaño del mensaje
         r = recv (sockfd, headBuffer, headerSize, 0);
         if (r < 0){
-            cout<<"se perdio la coneccion"<<endl;
-            isconnected = false;
-            close(sockfd);
+            lostConection();
             break;
         }
         
         recvPacket.analizeHeader(headBuffer);
         //opciones del header
-        if (recvPacket.opt == "m"){
+        if (recvPacket.opt == "m"){ //moverse por el campo
             //leer lo que queda del paquete y dibujar lo necesario
-        }
-        else if (recvPacket.opt == "x"){
+            r = recv (sockfd, buffer, 5, 0);
+            if (r < 0){
+                lostConection();
+                break;
+            }
+            recvPacket.analizeCordinates(buffer);
+
+            // modificar mapa
+            ground.setPosition(recvPacket.user, recvPacket.corX + recvPacket.dirX, recvPacket.corY + recvPacket.dirY);
+            
+            // dibujar
 
         }
-        else if (recvPacket.opt == "s"){
+        else if (recvPacket.opt == "x"){ // tabla
+
+        }
+        else if (recvPacket.opt == "s"){ // disparar
 
         }
         else if (recvPacket.opt == "c"){ //chat
@@ -71,6 +89,7 @@ void receiver(){
         bzero(buffer,BUFFSIZE);
         bzero(headBuffer,headerSize);
     }
+
 };
 
 //enviar mensajes a todos los usuarios
@@ -86,6 +105,7 @@ void sendtoall(string msg) {
     sendPacket.user = user;
     sendPacket.message = msg;
     string sendMsg = sendPacket.generate(); 
+
     int s = send(sockfd, sendMsg.c_str(), sendMsg.size(),0);
     
     if (s < 0){        
@@ -158,9 +178,8 @@ int main(int argc, char **argv) {
     string u;
     
     cout<<"introducir usuario"<<endl;
-    cin.getline(buffer, BUFFSIZE);
-    s = buffer;
-    login(s);
+    cin.getline(buffer, BUFFSIZE);    
+    login(buffer);
 
     cout<<"presionar cualquier tecla para comenzar el juego"<<endl;
 
@@ -168,14 +187,14 @@ int main(int argc, char **argv) {
     noecho();
     int ch; 
     while(isconnected) {        
-        if (kbhit()) {
-            /* 
+        /*if (kbhit()) {
+             
             ch = = getch();
             ver que tecla ha sido presionada
             y enviar el send dependiendo de ello
 
-            */
-        }
+            
+        }*/
     }
     return 0;
 };
