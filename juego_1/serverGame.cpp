@@ -23,6 +23,7 @@
 #define PORT 8080 
 #define BUFFSIZE 1024
 #define USERNAMESIZE 2
+#define COMMANDSIZE 1
 
 using namespace std;
 
@@ -42,6 +43,7 @@ void closeConection(int fd){
             break;
         }
     }
+    cout<<"conexion cliente cerrada"<<endl;
     mtxScreen.unlock();     
 }
 
@@ -77,29 +79,27 @@ void handler(){
 void clientHandler(int fd){
     int r, tam;
     string msg;
-    char headBuffer[4], buffer[BUFFSIZE];
+    char headBuffer[10], buffer[BUFFSIZE];
     struct PACKET recvPacket;
+    bzero(buffer,BUFFSIZE);
+    bzero(headBuffer,10);
 
     while (isconnected){
-        r = recv (fd, headBuffer, 4, 0); // recive el tamaño de la cabezera
-        if (r < 0){
-            //cout<<"se perdio la coneccion"<<endl;            
+        if (recv (fd, headBuffer, USERNAMESIZE + COMMANDSIZE, 0) < 0){                        
             closeConection(fd);
             break;
-        }
-        
+        }        
         recvPacket.analizeHeader(headBuffer);
-        //opciones del header
+        //opciones del header        
         if (recvPacket.opt == "m"){
             //leer lo que queda del paquete y reenviar
-            r = recv (sockfd, buffer, 5, 0);
-            if (r < 0){
+            if (recv (fd, buffer, 5, 0) < 0){
                 closeConection(fd);
                 break;
             }
             recvPacket.analizeCordinates(buffer);
             msg = recvPacket.generate();
-
+            
             for (int i=0 ; i<clientsFD.size(); ++i)
                 send(clientsFD[i], msg.c_str(), msg.size(), 0);
 
@@ -113,12 +113,16 @@ void clientHandler(int fd){
         else if (recvPacket.opt == "c"){ //chat
 
         }
+        else if (recvPacket.opt == "e"){ //chat            
+            closeConection(fd);
+            return ;
+        }
         else {
             // opcion no reconocida
         } 
 
         bzero(buffer,BUFFSIZE);
-        bzero(headBuffer,4);
+        bzero(headBuffer,10);
     }
 
 }
@@ -157,14 +161,7 @@ int main(int argc, char **argv) {
         //accept(servidor, (struct sockaddr*)&direc, &direcSize
         if((newfd = accept(sockfd, (struct sockaddr *)&serv_addr, &sin_size)) == -1) {
             continue;
-        }
-        
-        if(clientsFD.size() == 10 ) {
-            mtxScreen.lock();
-            cout<<"conexiones llenas"<<endl;
-            mtxScreen.unlock();
-            continue;
-        }
+        }        
 
         mtxScreen.lock();
         clientsFD.push_back(newfd);

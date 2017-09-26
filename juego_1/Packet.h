@@ -61,32 +61,26 @@ std::string fixedLength(int value, int digits = 3) {
     return result;
 }
 /***********************************************/
-int directions[] = {0,1, 1,1, 1,0, 1,-1, 0,-1, -1,-1, -1,0, -1,1 };
+int directions[] = {0,1, 1,1, 1,0, 1,-1, 0,-1, -1,-1, -1,0, -1,1 ,0,0};
 
 struct Ground
-{
-	int mesh[GROUNDSIZE][GROUNDSIZE];
+{	
 	vector<string> players;
 	vector<int> x, y; //coordenadas de los jugadores
 	
 
-	Ground(){
-		for (int i=0 ; i<GROUNDSIZE; ++i){
-			for (int j=0 ; j<GROUNDSIZE; ++j){
-				mesh[i][j] = 0;
-			}	
-		}
+	Ground(){		
 	};
 
-	void setPosition(string player, int newX, int newY){
+	bool setPosition(string player, int newX, int newY){
 		if ( newX<0 || newX>=GROUNDSIZE || newY<0 || newY>=GROUNDSIZE )
-			return;
+			return false;
 
 		for (int i=0; i< players.size(); ++i){
 			if (player == players[i]){
 				x[i] = newX;
 				y[i] = newY;
-				return;
+				return true;
 			}
 		}
 
@@ -94,6 +88,7 @@ struct Ground
 		players.push_back(player);
 		x.push_back(newX);
 		y.push_back(newY);
+		return true;
 	};
 };
 
@@ -110,7 +105,7 @@ struct PACKET {
         clear();
     };
 
-    void analizeCordinates(string command){
+    void analizeCordinates(string command){    	
     	string s = command.substr(0,2);
     	corX = atoi(s.c_str());
     	s = command.substr(2,2);
@@ -128,7 +123,7 @@ struct PACKET {
     	
     };
 
-    void analizeHeader(string command){
+    void analizeHeader(string command){    	
     	user = command.substr(0, USERNAMESIZE);
     	opt = command.substr(USERNAMESIZE, COMMANDSIZE);
     };
@@ -143,8 +138,14 @@ struct PACKET {
 	        r += fixedLength(message.size(),4);
 	        r += message;	        
         }
-        else if (opt == "x"){
-
+        else if (opt == "m"){
+        	r = user + opt ;
+        	r += fixedLength(corX,2);
+        	r += fixedLength(corY,2);
+        	r += fixedLength(direc,1);
+        }
+        else if (opt == "e"){
+        	r = user + opt ;        	
         }
         ///las demas oopciones
         return r;
