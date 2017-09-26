@@ -25,9 +25,9 @@
 #define USERNAMESIZE 2
 #define COMMANDSIZE 1
 #define FRAMERATE 50000
-#define XUNIT 0.9
-#define YUNIT 0.4
-
+#define XUNIT 2
+#define YUNIT 1
+#define GROUNDSIZE 20
 
 
 using namespace std;
@@ -52,13 +52,29 @@ void lostConection(){
 //dibujar campo
 void render(){
     clear();
+    //dibujar bordes
+    mvprintw(0, 0, "+");
+    mvprintw(GROUNDSIZE, 0, "+");
+    mvprintw(0, GROUNDSIZE * XUNIT, "+");
+    mvprintw(GROUNDSIZE, GROUNDSIZE * XUNIT, "+");
+    for (int i=1; i<GROUNDSIZE * XUNIT; ++i){
+        mvprintw(0, i, "-");
+        mvprintw(GROUNDSIZE, i, "-");
+    }
+    for (int i=1; i<GROUNDSIZE ; ++i){
+        mvprintw(i, 0, "|");
+        mvprintw(i, GROUNDSIZE* XUNIT, "|");
+    }
+    
+
+    //dibujar jugadores
     for (int i=0; i<ground.players.size(); ++i){
-        mvprintw((50.0 - ground.y[i])*YUNIT, ground.x[i]*XUNIT, "o");
+        mvprintw((GROUNDSIZE - ground.y[i])*YUNIT, ground.x[i]*XUNIT, "O");
         if (ground.players[i] == user){
             posX = ground.x[i];
             posY = ground.y[i];
         }
-    }
+    }    
     refresh();
 };
 
@@ -215,10 +231,11 @@ int main(int argc, char **argv) {
     string u, msg;
     cout<<"ingresar usuario :"<<endl;
     cin>>u; 
-
+    WINDOW *my_win;
     initscr();
     noecho();
-    curs_set(FALSE);
+    cbreak();
+    curs_set(FALSE);    
 
     login(u);
     struct PACKET movePacket;
@@ -228,6 +245,7 @@ int main(int argc, char **argv) {
     while((ch = getch()) != 'x' && isconnected){
         movePacket.corX = posX;
         movePacket.corY = posY;
+
         if (ch == 'w'){
             movePacket.direc = 0;                        
         }
@@ -247,15 +265,13 @@ int main(int argc, char **argv) {
         if (send(sockfd, msg.c_str(), msg.size(), 0) < 0)
             lostConection();
 
-        usleep(50000);
+        usleep(100000);
     }
+    
     endwin();    
     logout();
     
     return 0;
 };
- 
-
- 
 
  

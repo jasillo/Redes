@@ -24,6 +24,7 @@
 #define BUFFSIZE 1024
 #define USERNAMESIZE 2
 #define COMMANDSIZE 1
+#define GROUNDSIZE 20
 
 using namespace std;
 

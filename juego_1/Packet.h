@@ -9,7 +9,7 @@
 
 #define USERNAMESIZE 2
 #define COMMANDSIZE 1
-#define GROUNDSIZE 50
+#define GROUNDSIZE 20
 
 using namespace std;
 
@@ -73,7 +73,8 @@ struct Ground
 	};
 
 	bool setPosition(string player, int newX, int newY){
-		if ( newX<0 || newX>=GROUNDSIZE || newY<0 || newY>=GROUNDSIZE )
+		//no se tocan los bordes -> 0 y GROUNDSIZE
+		if ( newX<=0 || newX>=GROUNDSIZE || newY<=0 || newY>=GROUNDSIZE )
 			return false;
 
 		for (int i=0; i< players.size(); ++i){
