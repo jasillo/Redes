@@ -131,7 +131,7 @@ void clientHandler(int fd){
             }
             recvPacket.analizeCordinates(buffer);
             msg = recvPacket.generate();
-            cout<<msg<<endl;
+            cout<<"usuario "<<recvPacket.user<<" logeado"<<endl;
 
             //enviamos la possicion del nueoo usuario a todos
             for (int i=0 ; i<clientsFD.size(); ++i)
@@ -166,8 +166,8 @@ void clientHandler(int fd){
             }
             return ;
         }
-        else {
-            // opcion no reconocida
+        else if (recvPacket.opt == "h"){ //herido
+            cout<<"usuario "<<recvPacket.user<<" herido"<<endl;
         } 
 
         bzero(buffer,BUFFSIZE);

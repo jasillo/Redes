@@ -118,7 +118,9 @@ void receiver(){
     char buffer[BUFFSIZE], headBuffer[10];
     bzero(buffer,BUFFSIZE);
     bzero(headBuffer,10);
-    struct PACKET recvPacket;    
+    struct PACKET recvPacket, sendPacket;     
+    sendPacket.user = user;
+    string msg;
 
     while (isconnected){
         //recivimos tamaño del mensaje
@@ -159,12 +161,29 @@ void receiver(){
             }
             recvPacket.analizeCordinates(buffer);
 
-            ground.shotX.push_back(recvPacket.corX * XUNIT);
-            ground.shotY.push_back(recvPacket.corY * YUNIT);
+            ground.shotX.push_back((recvPacket.corX + recvPacket.dirX )* XUNIT);
+            ground.shotY.push_back((recvPacket.corY + recvPacket.dirY )* YUNIT);
             ground.direX.push_back(recvPacket.dirX * XUNIT);
             ground.direY.push_back(recvPacket.dirY * YUNIT);
             ground.startTime.push_back(clock());
             render();
+
+            //calcular si fuimos golpeados
+            int nextX, nextY;            
+            nextX = ground.shotX.back();
+            nextY = ground.shotY.back();
+            while (nextX>0 && nextY>0 && nextX<GROUNDSIZE*XUNIT && nextY<GROUNDSIZE*YUNIT){
+                if (posX*XUNIT == nextX && posY*YUNIT==nextY){
+                    sendPacket.opt = "h"; //ha sido herido
+                    msg = sendPacket.generate();
+                    send(sockfd, msg.c_str(), msg.size(), 0);
+                    nextX = -1;
+                }else {
+                    nextX += ground.direX.back();
+                    nextY += ground.direY.back();
+                }                
+            }
+            
         }
         else if (recvPacket.opt == "x"){ // disparar
 

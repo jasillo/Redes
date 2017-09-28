@@ -148,13 +148,13 @@ struct PACKET {
 	        r += fixedLength(message.size(),4);
 	        r += message;	        
         }
-        else if (opt == "m" || opt == "s" || opt == "l"){
+        else if (opt == "m" || opt == "s" || opt == "l"){ //move, shot or login
         	r = user + opt ;
         	r += fixedLength(corX,2);
         	r += fixedLength(corY,2);
         	r += fixedLength(direc,1);
         }
-        else if (opt == "e"){
+        else if (opt == "e" || opt == "h"){ // exit or hurt
         	r = user + opt ;        	
         }        
         ///las demas oopciones
