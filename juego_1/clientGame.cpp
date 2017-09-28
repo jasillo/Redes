@@ -18,6 +18,8 @@
 #include <iostream>
 #include <algorithm>
 #include <ncurses.h>
+#include <vector>
+#include <queue> 
 
 #include "Packet.h"
  
@@ -65,7 +67,19 @@ void render(){
     for (int i=1; i<GROUNDSIZE ; ++i){
         mvprintw(i, 0, "|");
         mvprintw(i, GROUNDSIZE* XUNIT, "|");
-    }    
+    }  
+
+    //dibujar disparos
+    int nextX, nextY;
+    for (int i=0; i<ground.shotX.size(); ++i){
+        nextX = ground.shotX[i];
+        nextY = ground.shotY[i];
+        while (nextX>0 && nextY>0 && nextX<GROUNDSIZE*XUNIT && nextY<GROUNDSIZE*YUNIT){
+            mvprintw(GROUNDSIZE - nextY, nextX, "x");
+            nextX += ground.direX[i];
+            nextY += ground.direY[i];
+        }
+    }
 
     //dibujar jugadores    
     for (int i=0; i<ground.players.size(); ++i){
@@ -77,6 +91,25 @@ void render(){
     }  
     refresh();
 };
+
+void timerShots(){
+    clock_t umbral;
+    while (isconnected){
+        umbral = clock();
+        if (!ground.startTime.empty() && double(umbral - ground.startTime.front()) > 500){
+            mtxScreen.lock();
+                ground.shotX.erase (ground.shotX.begin());
+                ground.shotY.erase (ground.shotY.begin());
+                ground.direX.erase (ground.direX.begin());
+                ground.direY.erase (ground.direY.begin());
+                ground.startTime.erase (ground.startTime.begin());
+            mtxScreen.unlock();
+            render();
+        }
+        
+        usleep(100000);
+    }
+}
 
 
 // se encarga de recivir los mensajes
@@ -125,7 +158,13 @@ void receiver(){
                 break;
             }
             recvPacket.analizeCordinates(buffer);
-            
+
+            ground.shotX.push_back(recvPacket.corX * XUNIT);
+            ground.shotY.push_back(recvPacket.corY * YUNIT);
+            ground.direX.push_back(recvPacket.dirX * XUNIT);
+            ground.direY.push_back(recvPacket.dirY * YUNIT);
+            ground.startTime.push_back(clock());
+            render();
         }
         else if (recvPacket.opt == "x"){ // disparar
 
@@ -148,7 +187,7 @@ void receiver(){
                     ground.players.erase (ground.players.begin()+i);
                     ground.x.erase(ground.x.begin()+i);
                     ground.y.erase(ground.y.begin()+i);
-                    break;
+                    //break;
                 }
             }
             render();
@@ -215,6 +254,7 @@ void login(string u) {
     user = u.substr(0, USERNAMESIZE);
     isconnected = true;
     thread (receiver).detach();
+    thread (timerShots).detach();
 
    //enviar posicion inicial
     struct PACKET initialPacket;

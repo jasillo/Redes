@@ -92,7 +92,7 @@ void clientHandler(int fd){
         }        
         recvPacket.analizeHeader(headBuffer);
         //opciones del header        
-        if (recvPacket.opt == "m" || recvPacket.opt == "s" ){
+        if (recvPacket.opt == "m" ){ //movimiento del jugador
             //leer lo que queda del paquete y reenviar
             if (recv (fd, buffer, 5, 0) < 0){
                 closeConection(fd);
@@ -101,17 +101,22 @@ void clientHandler(int fd){
             recvPacket.analizeCordinates(buffer);
             msg = recvPacket.generate();
 
-            if (recvPacket.opt == "s"){
+            if (ground.setPosition(recvPacket.user, recvPacket.corX + recvPacket.dirX, 
+                                                    recvPacket.corY + recvPacket.dirY)){
                 for (int i=0 ; i<clientsFD.size(); ++i)
                     send(clientsFD[i], msg.c_str(), msg.size(), 0);
+            }            
+        }
+        else if (recvPacket.opt == "s"){ //disparo
+            if (recv (fd, buffer, 5, 0) < 0){
+                closeConection(fd);
+                break;
             }
-            else{ // movimiento 
-                if (ground.setPosition(recvPacket.user, recvPacket.corX + recvPacket.dirX, 
-                                                        recvPacket.corY + recvPacket.dirY)){
-                    for (int i=0 ; i<clientsFD.size(); ++i)
-                        send(clientsFD[i], msg.c_str(), msg.size(), 0);
-                }                
-            }
+            recvPacket.analizeCordinates(buffer);
+            msg = recvPacket.generate();
+
+            for (int i=0 ; i<clientsFD.size(); ++i)
+                send(clientsFD[i], msg.c_str(), msg.size(), 0);
         }
         else if (recvPacket.opt == "x"){
 
@@ -148,8 +153,17 @@ void clientHandler(int fd){
         else if (recvPacket.opt == "e"){ //chat            
             closeConection(fd);
             msg = recvPacket.generate();
+            //informar a los jugadores de la salida del jugador
             for (int i=0 ; i<clientsFD.size(); ++i)
                 send(clientsFD[i], msg.c_str(), msg.size(), 0);
+            //borrar al jugador del tablero
+            for (int i=0; i<ground.players.size(); ++i){
+                if (ground.players[i] == recvPacket.user){
+                    ground.players.erase (ground.players.begin()+i);
+                    ground.x.erase(ground.x.begin()+i);
+                    ground.y.erase(ground.y.begin()+i);                    
+                }
+            }
             return ;
         }
         else {

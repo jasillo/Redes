@@ -7,6 +7,7 @@
 #include <iostream>
 #include <algorithm>
 
+
 #define USERNAMESIZE 2
 #define COMMANDSIZE 1
 #define GROUNDSIZE 20
@@ -68,6 +69,8 @@ struct Ground
 	vector<string> players;
 	vector<int> x, y; //coordenadas de los jugadores
 	
+    vector<int> shotX, shotY, direX, direY;
+    vector<clock_t> startTime;
 
 	Ground(){		
 	};
