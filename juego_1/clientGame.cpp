@@ -142,6 +142,17 @@ void receiver(){
             ground.setPositionNewPlayer(recvPacket.user, recvPacket.corX, recvPacket.corY);
             render();
         }
+        else if (recvPacket.opt == "e"){ //chat
+            for (int i=0; i<ground.players.size(); ++i){
+                if (ground.players[i] == recvPacket.user){
+                    ground.players.erase (ground.players.begin()+i);
+                    ground.x.erase(ground.x.begin()+i);
+                    ground.y.erase(ground.y.begin()+i);
+                    break;
+                }
+            }
+            render();
+        }
         else {
             // opcion no reconocida
         }

@@ -147,6 +147,9 @@ void clientHandler(int fd){
         }
         else if (recvPacket.opt == "e"){ //chat            
             closeConection(fd);
+            msg = recvPacket.generate();
+            for (int i=0 ; i<clientsFD.size(); ++i)
+                send(clientsFD[i], msg.c_str(), msg.size(), 0);
             return ;
         }
         else {
