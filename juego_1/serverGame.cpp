@@ -33,7 +33,9 @@ vector<int> clientsFD;
 int sockfd;
 bool isconnected;
 mutex mtxScreen;
+Ground ground;
 
+// cerrar la coneccion de un determinado cliente
 void closeConection(int fd){
     mtxScreen.lock();
     for (int i=0; i<clientsFD.size(); ++i){
@@ -68,12 +70,8 @@ void handler(){
             cout<<"orden no reconocida"<<endl;
             mtxScreen.unlock();
         }
-
         bzero(buffer,BUFFSIZE);
     }
-    /*mtxScreen.lock();
-    cout<<"servidor terminado"<<endl;
-    mtxScreen.unlock();*/
 };
 
 // manejador que recive los mensajes de los clientes y los renvia a los demas (thread)
@@ -82,8 +80,10 @@ void clientHandler(int fd){
     string msg;
     char headBuffer[10], buffer[BUFFSIZE];
     struct PACKET recvPacket;
+    struct PACKET sendPacket;
     bzero(buffer,BUFFSIZE);
     bzero(headBuffer,10);
+    bool valido; //ve si la posicion es valida
 
     while (isconnected){
         if (recv (fd, headBuffer, USERNAMESIZE + COMMANDSIZE, 0) < 0){                        
@@ -92,7 +92,7 @@ void clientHandler(int fd){
         }        
         recvPacket.analizeHeader(headBuffer);
         //opciones del header        
-        if (recvPacket.opt == "m"){
+        if (recvPacket.opt == "m" || recvPacket.opt == "s" ){
             //leer lo que queda del paquete y reenviar
             if (recv (fd, buffer, 5, 0) < 0){
                 closeConection(fd);
@@ -100,19 +100,50 @@ void clientHandler(int fd){
             }
             recvPacket.analizeCordinates(buffer);
             msg = recvPacket.generate();
-            
-            for (int i=0 ; i<clientsFD.size(); ++i)
-                send(clientsFD[i], msg.c_str(), msg.size(), 0);
 
+            if (recvPacket.opt == "s"){
+                for (int i=0 ; i<clientsFD.size(); ++i)
+                    send(clientsFD[i], msg.c_str(), msg.size(), 0);
+            }
+            else{ // movimiento 
+                if (ground.setPosition(recvPacket.user, recvPacket.corX + recvPacket.dirX, 
+                                                        recvPacket.corY + recvPacket.dirY)){
+                    for (int i=0 ; i<clientsFD.size(); ++i)
+                        send(clientsFD[i], msg.c_str(), msg.size(), 0);
+                }                
+            }
         }
         else if (recvPacket.opt == "x"){
 
         }
-        else if (recvPacket.opt == "s"){
-
-        }
         else if (recvPacket.opt == "c"){ //chat
 
+        }
+        else if (recvPacket.opt == "l"){ //login
+            if (recv (fd, buffer, 5, 0) < 0){
+                closeConection(fd);
+                break;
+            }
+            recvPacket.analizeCordinates(buffer);
+            msg = recvPacket.generate();
+            cout<<msg<<endl;
+
+            //enviamos la possicion del nueoo usuario a todos
+            for (int i=0 ; i<clientsFD.size(); ++i)
+                send(clientsFD[i], msg.c_str(), msg.size(), 0);            
+
+            // enviamos las posciciones de los ya conectados
+            sendPacket.opt = "l";
+            sendPacket.direc = 8;
+            for (int i=0 ; i<ground.players.size(); ++i){
+                sendPacket.user = ground.players[i];
+                sendPacket.corX = ground.x[i];
+                sendPacket.corY = ground.y[i];
+                msg = sendPacket.generate();
+                send(fd, msg.c_str(), msg.size(), 0);
+            }
+            ground.setPositionNewPlayer(recvPacket.user, recvPacket.corX,recvPacket.corY);
+                
         }
         else if (recvPacket.opt == "e"){ //chat            
             closeConection(fd);
@@ -130,7 +161,7 @@ void clientHandler(int fd){
 
 int main(int argc, char **argv) {
     isconnected = true;
-
+    
     if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
         cout<<"error al crear el socket"<<endl;
         return -1;

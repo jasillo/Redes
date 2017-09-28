@@ -5,6 +5,7 @@
  
 #include <netdb.h>
 #include <unistd.h>
+#include <time.h>
 #include <thread> 
 #include <mutex>
  
@@ -64,17 +65,16 @@ void render(){
     for (int i=1; i<GROUNDSIZE ; ++i){
         mvprintw(i, 0, "|");
         mvprintw(i, GROUNDSIZE* XUNIT, "|");
-    }
-    
+    }    
 
-    //dibujar jugadores
+    //dibujar jugadores    
     for (int i=0; i<ground.players.size(); ++i){
         mvprintw((GROUNDSIZE - ground.y[i])*YUNIT, ground.x[i]*XUNIT, "O");
         if (ground.players[i] == user){
             posX = ground.x[i];
             posY = ground.y[i];
         }
-    }    
+    }  
     refresh();
 };
 
@@ -106,8 +106,11 @@ void receiver(){
             recvPacket.analizeCordinates(buffer);
             
             // modificar mapa
-
-            if (ground.setPosition(recvPacket.user, 
+            if (recvPacket.direc == 8){
+                ground.setPositionNewPlayer(recvPacket.user, recvPacket.corX, recvPacket.corY);
+                render();
+            }
+            else if (ground.setPosition(recvPacket.user, 
                                 recvPacket.corX + recvPacket.dirX, 
                                 recvPacket.corY + recvPacket.dirY)){
                 if (recvPacket.user == user)
@@ -116,14 +119,28 @@ void receiver(){
                 render();
             }
         }
-        else if (recvPacket.opt == "x"){ // tabla
-
+        else if (recvPacket.opt == "s"){ // tabla
+            if (recv (sockfd, buffer, 5, 0) < 0){            
+                lostConection();
+                break;
+            }
+            recvPacket.analizeCordinates(buffer);
+            
         }
-        else if (recvPacket.opt == "s"){ // disparar
+        else if (recvPacket.opt == "x"){ // disparar
 
         }
         else if (recvPacket.opt == "c"){ //chat
 
+        }
+        else if (recvPacket.opt == "l"){ //login
+            if (recv (sockfd, buffer, 5, 0) < 0){            
+                lostConection();
+                break;
+            }
+            recvPacket.analizeCordinates(buffer);
+            ground.setPositionNewPlayer(recvPacket.user, recvPacket.corX, recvPacket.corY);
+            render();
         }
         else {
             // opcion no reconocida
@@ -190,10 +207,11 @@ void login(string u) {
 
    //enviar posicion inicial
     struct PACKET initialPacket;
-    initialPacket.opt = "m";
+    initialPacket.opt = "l";
     initialPacket.user = user;
-    initialPacket.corX = 1;
-    initialPacket.corY = 1;
+
+    initialPacket.corX = 0 ;
+    initialPacket.corY = rand() % (GROUNDSIZE -1 ) +1;
     initialPacket.direc = 8;
     string msg = initialPacket.generate();
     
@@ -227,6 +245,7 @@ void logout() {
 int main(int argc, char **argv) {   
     posX = posY = 1;
     char ch;
+    srand (time(NULL));
 
     string u, msg;
     cout<<"ingresar usuario :"<<endl;
@@ -246,18 +265,40 @@ int main(int argc, char **argv) {
         movePacket.corX = posX;
         movePacket.corY = posY;
 
-        if (ch == 'w'){
+        //movimiento  del jugador
+        if (ch == 'w'){ //arriba
+            movePacket.opt = "m";
             movePacket.direc = 0;                        
         }
-        else if (ch == 'a'){
+        else if (ch == 'a'){ //izquierda
+            movePacket.opt = "m";
             movePacket.direc = 6;
         }
-        else if (ch == 's'){
+        else if (ch == 's'){ //abajo
+            movePacket.opt = "m";
             movePacket.direc = 4;
         }
-        else if (ch == 'd'){
+        else if (ch == 'd'){ //derecha
+            movePacket.opt = "m";
             movePacket.direc = 2;
-        }        
+        }
+        //opciones de disparo en diagonales
+        else if (ch == 'h'){ //arriba-izquierda 
+            movePacket.opt = "s";
+            movePacket.direc = 7;
+        }
+        else if (ch == 'j'){ //arriba-derecha
+            movePacket.opt = "s";
+            movePacket.direc = 1;
+        }
+        else if (ch == 'k'){ //abajo-izquierda
+            movePacket.opt = "s";
+            movePacket.direc = 5;
+        }
+        else if (ch == 'l'){ //abajo-derecha
+            movePacket.opt = "s";
+            movePacket.direc = 3;
+        }                
         else
             continue;
 

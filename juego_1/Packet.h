@@ -77,20 +77,26 @@ struct Ground
 		if ( newX<=0 || newX>=GROUNDSIZE || newY<=0 || newY>=GROUNDSIZE )
 			return false;
 
-		for (int i=0; i< players.size(); ++i){
-			if (player == players[i]){
-				x[i] = newX;
-				y[i] = newY;
-				return true;
-			}
-		}
-
-		//si no existe se crea el jugador
-		players.push_back(player);
-		x.push_back(newX);
-		y.push_back(newY);
-		return true;
+        //detectar colisiones 
+        int j;       
+        for (int i=0; i< players.size(); ++i){
+            if (x[i] == newX && y[i]== newY)
+                return false;
+            if (players[i] == player)
+                j=i;
+        }
+		
+		x[j] = newX;
+		y[j] = newY;
+		return true;		
 	};
+
+    bool setPositionNewPlayer(string player, int newX, int newY){        
+        players.push_back(player);
+        x.push_back(newX);
+        y.push_back(newY);
+        return true;
+    }
 };
 
 struct PACKET { 
@@ -139,7 +145,7 @@ struct PACKET {
 	        r += fixedLength(message.size(),4);
 	        r += message;	        
         }
-        else if (opt == "m"){
+        else if (opt == "m" || opt == "s" || opt == "l"){
         	r = user + opt ;
         	r += fixedLength(corX,2);
         	r += fixedLength(corY,2);
@@ -147,7 +153,7 @@ struct PACKET {
         }
         else if (opt == "e"){
         	r = user + opt ;        	
-        }
+        }        
         ///las demas oopciones
         return r;
     };    

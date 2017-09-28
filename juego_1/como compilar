@@ -1,5 +1,5 @@
 sudo apt-get install libncurses-dev
 
 g++ -std=c++11 serverGame.cpp -o server.exe -pthread -lncurses
-g++ -std=c++11 serverGame.cpp -o client.exe -pthread -lncurses
+g++ -std=c++11 clientGame.cpp -o client.exe -pthread -lncurses
 
